@@ -1,0 +1,361 @@
+{
+  "customers": [
+    {
+      "id": "CUST-001",
+      "name": "Sarah Mitchell",
+      "email": "sarah.mitchell@email.com",
+      "phone": "+1-555-0101",
+      "tier": "gold",
+      "account_created": "2022-03-15",
+      "total_orders": 47,
+      "lifetime_value": 3842.50,
+      "refunds_this_year": 1,
+      "orders": [
+        {
+          "order_id": "ORD-2024-8841",
+          "date": "2024-11-28",
+          "items": [
+            {"sku": "ELEC-4421", "name": "Wireless Noise-Canceling Headphones", "category": "electronics", "price": 249.99, "final_sale": false}
+          ],
+          "total": 249.99,
+          "status": "delivered",
+          "delivery_date": "2024-12-02"
+        },
+        {
+          "order_id": "ORD-2024-9102",
+          "date": "2024-12-15",
+          "items": [
+            {"sku": "CLTH-1102", "name": "Premium Wool Sweater", "category": "clothing", "price": 89.99, "final_sale": false}
+          ],
+          "total": 89.99,
+          "status": "delivered",
+          "delivery_date": "2024-12-20"
+        }
+      ]
+    },
+    {
+      "id": "CUST-002",
+      "name": "James Rodriguez",
+      "email": "j.rodriguez@email.com",
+      "phone": "+1-555-0102",
+      "tier": "standard",
+      "account_created": "2023-07-22",
+      "total_orders": 12,
+      "lifetime_value": 876.30,
+      "refunds_this_year": 3,
+      "orders": [
+        {
+          "order_id": "ORD-2024-7723",
+          "date": "2024-10-05",
+          "items": [
+            {"sku": "HOME-3301", "name": "Smart LED Desk Lamp", "category": "home", "price": 59.99, "final_sale": false}
+          ],
+          "total": 59.99,
+          "status": "delivered",
+          "delivery_date": "2024-10-10"
+        }
+      ]
+    },
+    {
+      "id": "CUST-003",
+      "name": "Emily Chen",
+      "email": "emily.chen@email.com",
+      "phone": "+1-555-0103",
+      "tier": "platinum",
+      "account_created": "2021-01-08",
+      "total_orders": 128,
+      "lifetime_value": 12450.00,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-9955",
+          "date": "2024-12-01",
+          "items": [
+            {"sku": "ELEC-5500", "name": "4K Webcam Pro", "category": "electronics", "price": 179.99, "final_sale": false},
+            {"sku": "DIGI-0012", "name": "Photo Editing Software License", "category": "digital", "price": 49.99, "final_sale": true}
+          ],
+          "total": 229.98,
+          "status": "delivered",
+          "delivery_date": "2024-12-05"
+        }
+      ]
+    },
+    {
+      "id": "CUST-004",
+      "name": "Michael Thompson",
+      "email": "mthompson@email.com",
+      "phone": "+1-555-0104",
+      "tier": "standard",
+      "account_created": "2024-02-14",
+      "total_orders": 5,
+      "lifetime_value": 312.45,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-6612",
+          "date": "2024-09-20",
+          "items": [
+            {"sku": "CLTH-2201", "name": "Running Shoes - Limited Edition", "category": "clothing", "price": 149.99, "final_sale": true}
+          ],
+          "total": 149.99,
+          "status": "delivered",
+          "delivery_date": "2024-09-25"
+        }
+      ]
+    },
+    {
+      "id": "CUST-005",
+      "name": "Lisa Park",
+      "email": "lisa.park@email.com",
+      "phone": "+1-555-0105",
+      "tier": "gold",
+      "account_created": "2022-11-30",
+      "total_orders": 34,
+      "lifetime_value": 2890.75,
+      "refunds_this_year": 2,
+      "orders": [
+        {
+          "order_id": "ORD-2024-8877",
+          "date": "2024-11-10",
+          "items": [
+            {"sku": "HOME-4410", "name": "Ceramic Coffee Mug Set", "category": "home", "price": 34.99, "final_sale": false}
+          ],
+          "total": 34.99,
+          "status": "delivered",
+          "delivery_date": "2024-11-15"
+        }
+      ]
+    },
+    {
+      "id": "CUST-006",
+      "name": "David Williams",
+      "email": "d.williams@email.com",
+      "phone": "+1-555-0106",
+      "tier": "standard",
+      "account_created": "2023-04-18",
+      "total_orders": 8,
+      "lifetime_value": 445.20,
+      "refunds_this_year": 1,
+      "orders": [
+        {
+          "order_id": "ORD-2024-5544",
+          "date": "2024-08-12",
+          "items": [
+            {"sku": "ELEC-3310", "name": "Bluetooth Speaker Mini", "category": "electronics", "price": 79.99, "final_sale": false}
+          ],
+          "total": 79.99,
+          "status": "delivered",
+          "delivery_date": "2024-08-18"
+        }
+      ]
+    },
+    {
+      "id": "CUST-007",
+      "name": "Amanda Foster",
+      "email": "amanda.foster@email.com",
+      "phone": "+1-555-0107",
+      "tier": "standard",
+      "account_created": "2024-06-01",
+      "total_orders": 3,
+      "lifetime_value": 198.50,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-9922",
+          "date": "2024-12-10",
+          "items": [
+            {"sku": "CLTH-3305", "name": "Silk Scarf Collection", "category": "clothing", "price": 65.00, "final_sale": false}
+          ],
+          "total": 65.00,
+          "status": "shipped",
+          "delivery_date": null
+        }
+      ]
+    },
+    {
+      "id": "CUST-008",
+      "name": "Robert Kim",
+      "email": "r.kim@email.com",
+      "phone": "+1-555-0108",
+      "tier": "platinum",
+      "account_created": "2020-08-25",
+      "total_orders": 95,
+      "lifetime_value": 9876.40,
+      "refunds_this_year": 1,
+      "orders": [
+        {
+          "order_id": "ORD-2024-7788",
+          "date": "2024-10-22",
+          "items": [
+            {"sku": "ELEC-6600", "name": "Gaming Mechanical Keyboard", "category": "electronics", "price": 159.99, "final_sale": false}
+          ],
+          "total": 159.99,
+          "status": "delivered",
+          "delivery_date": "2024-10-28"
+        }
+      ]
+    },
+    {
+      "id": "CUST-009",
+      "name": "Jennifer Adams",
+      "email": "j.adams@email.com",
+      "phone": "+1-555-0109",
+      "tier": "standard",
+      "account_created": "2023-09-10",
+      "total_orders": 15,
+      "lifetime_value": 1120.80,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-6655",
+          "date": "2024-09-28",
+          "items": [
+            {"sku": "HOME-5502", "name": "Aromatherapy Diffuser", "category": "home", "price": 42.99, "final_sale": false}
+          ],
+          "total": 42.99,
+          "status": "delivered",
+          "delivery_date": "2024-10-03"
+        }
+      ]
+    },
+    {
+      "id": "CUST-010",
+      "name": "Christopher Lee",
+      "email": "c.lee@email.com",
+      "phone": "+1-555-0110",
+      "tier": "gold",
+      "account_created": "2022-05-20",
+      "total_orders": 41,
+      "lifetime_value": 3210.60,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-8899",
+          "date": "2024-11-25",
+          "items": [
+            {"sku": "DIGI-0025", "name": "Online Course Bundle - Python Mastery", "category": "digital", "price": 199.99, "final_sale": true}
+          ],
+          "total": 199.99,
+          "status": "delivered",
+          "delivery_date": "2024-11-25"
+        }
+      ]
+    },
+    {
+      "id": "CUST-011",
+      "name": "Maria Garcia",
+      "email": "maria.garcia@email.com",
+      "phone": "+1-555-0111",
+      "tier": "standard",
+      "account_created": "2024-01-15",
+      "total_orders": 7,
+      "lifetime_value": 534.90,
+      "refunds_this_year": 2,
+      "orders": [
+        {
+          "order_id": "ORD-2024-7711",
+          "date": "2024-10-01",
+          "items": [
+            {"sku": "CLTH-4412", "name": "Winter Parka - Waterproof", "category": "clothing", "price": 189.99, "final_sale": false}
+          ],
+          "total": 189.99,
+          "status": "delivered",
+          "delivery_date": "2024-10-08"
+        }
+      ]
+    },
+    {
+      "id": "CUST-012",
+      "name": "Kevin Brown",
+      "email": "k.brown@email.com",
+      "phone": "+1-555-0112",
+      "tier": "standard",
+      "account_created": "2023-12-05",
+      "total_orders": 9,
+      "lifetime_value": 678.25,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-9933",
+          "date": "2024-12-08",
+          "items": [
+            {"sku": "ELEC-7700", "name": "USB-C Hub 7-in-1", "category": "electronics", "price": 45.99, "final_sale": false}
+          ],
+          "total": 45.99,
+          "status": "delivered",
+          "delivery_date": "2024-12-12"
+        }
+      ]
+    },
+    {
+      "id": "CUST-013",
+      "name": "Rachel Turner",
+      "email": "rachel.turner@email.com",
+      "phone": "+1-555-0113",
+      "tier": "gold",
+      "account_created": "2022-08-12",
+      "total_orders": 28,
+      "lifetime_value": 2156.40,
+      "refunds_this_year": 1,
+      "orders": [
+        {
+          "order_id": "ORD-2024-5566",
+          "date": "2024-08-20",
+          "items": [
+            {"sku": "HOME-6601", "name": "Bamboo Cutting Board Set", "category": "home", "price": 29.99, "final_sale": false}
+          ],
+          "total": 29.99,
+          "status": "delivered",
+          "delivery_date": "2024-08-25"
+        }
+      ]
+    },
+    {
+      "id": "CUST-014",
+      "name": "Daniel Wright",
+      "email": "d.wright@email.com",
+      "phone": "+1-555-0114",
+      "tier": "standard",
+      "account_created": "2024-03-28",
+      "total_orders": 4,
+      "lifetime_value": 267.80,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-6688",
+          "date": "2024-09-15",
+          "items": [
+            {"sku": "CLTH-5508", "name": "Leather Belt - Classic", "category": "clothing", "price": 55.00, "final_sale": false}
+          ],
+          "total": 55.00,
+          "status": "delivered",
+          "delivery_date": "2024-09-20"
+        }
+      ]
+    },
+    {
+      "id": "CUST-015",
+      "name": "Nicole Harris",
+      "email": "nicole.harris@email.com",
+      "phone": "+1-555-0115",
+      "tier": "platinum",
+      "account_created": "2021-06-14",
+      "total_orders": 72,
+      "lifetime_value": 7654.30,
+      "refunds_this_year": 0,
+      "orders": [
+        {
+          "order_id": "ORD-2024-9966",
+          "date": "2024-12-05",
+          "items": [
+            {"sku": "ELEC-8800", "name": "Wireless Charging Pad", "category": "electronics", "price": 39.99, "final_sale": false},
+            {"sku": "HOME-7703", "name": "Throw Pillow Set", "category": "home", "price": 49.99, "final_sale": false}
+          ],
+          "total": 89.98,
+          "status": "delivered",
+          "delivery_date": "2024-12-10"
+        }
+      ]
+    }
+  ]
+}

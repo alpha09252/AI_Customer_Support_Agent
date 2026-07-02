@@ -1,0 +1,69 @@
+import uuid
+from dotenv import load_dotenv
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from app.agent.graph import run_agent
+from app.websocket import log_broadcaster
+from app.crm import load_crm
+
+load_dotenv()
+
+app = FastAPI(title="ShopEase AI Support Agent", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = ""
+    history: list[dict] = []
+
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "service": "ai-support-agent"}
+
+
+@app.get("/api/customers")
+async def list_customers():
+    crm = load_crm()
+    return [
+        {
+            "id": c["id"],
+            "name": c["name"],
+            "email": c["email"],
+            "tier": c["tier"],
+            "orders": len(c["orders"]),
+        }
+        for c in crm["customers"]
+    ]
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest):
+    session_id = req.session_id or str(uuid.uuid4())
+    response = await run_agent(req.message, req.history, session_id)
+    return ChatResponse(response=response, session_id=session_id)
+
+
+@app.websocket("/ws/logs")
+async def websocket_logs(websocket: WebSocket):
+    await log_broadcaster.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        log_broadcaster.disconnect(websocket)
