@@ -1,14 +1,18 @@
+import os
 import uuid
 from dotenv import load_dotenv
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.agent.graph import run_agent
+from app.agent.demo import run_demo_agent
 from app.websocket import log_broadcaster
 from app.crm import load_crm
 
 load_dotenv()
+
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("1", "true", "yes")  # set true if OpenAI unavailable
 
 app = FastAPI(title="ShopEase AI Support Agent", version="1.0.0")
 
@@ -34,7 +38,11 @@ class ChatResponse(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "ai-support-agent"}
+    return {
+        "status": "ok",
+        "service": "ai-support-agent",
+        "demo_mode": DEMO_MODE,
+    }
 
 
 @app.get("/api/customers")
@@ -55,8 +63,22 @@ async def list_customers():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     session_id = req.session_id or str(uuid.uuid4())
-    response = await run_agent(req.message, req.history, session_id)
-    return ChatResponse(response=response, session_id=session_id)
+    try:
+        if DEMO_MODE:
+            response = await run_demo_agent(req.message, req.history, session_id)
+        else:
+            response = await run_agent(req.message, req.history, session_id)
+        return ChatResponse(response=response, session_id=session_id)
+    except Exception as e:
+        error_msg = str(e)
+        if "unsupported_country_region_territory" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail="OpenAI API is not available in your region. Set DEMO_MODE=true in backend/.env to test without OpenAI.",
+            )
+        if "OPENAI_API_KEY" in error_msg:
+            raise HTTPException(status_code=503, detail="OpenAI API key is missing. Set OPENAI_API_KEY or DEMO_MODE=true in backend/.env.")
+        raise HTTPException(status_code=500, detail=f"Agent error: {error_msg}")
 
 
 @app.websocket("/ws/logs")
