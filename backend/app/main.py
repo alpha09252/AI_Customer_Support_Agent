@@ -31,9 +31,29 @@ class ChatRequest(BaseModel):
     history: list[dict] = []
 
 
+class PolicyRule(BaseModel):
+    rule_id: str
+    label: str
+    passed: bool
+    detail: str
+
+
+class Decision(BaseModel):
+    status: str
+    reference: str | None = None
+    amount: float | None = None
+    item_name: str | None = None
+    order_id: str | None = None
+    item_sku: str | None = None
+    rules: list[PolicyRule] = []
+    confidence: int = 0
+    primary_reason: str | None = None
+
+
 class ChatResponse(BaseModel):
     response: str
     session_id: str
+    decision: Decision | None = None
 
 
 @app.get("/api/health")
@@ -65,10 +85,12 @@ async def chat(req: ChatRequest):
     session_id = req.session_id or str(uuid.uuid4())
     try:
         if DEMO_MODE:
-            response = await run_demo_agent(req.message, req.history, session_id)
+            response, decision = await run_demo_agent(req.message, req.history, session_id)
         else:
-            response = await run_agent(req.message, req.history, session_id)
-        return ChatResponse(response=response, session_id=session_id)
+            response, decision = await run_agent(req.message, req.history, session_id)
+            if decision:
+                await log_broadcaster.broadcast("decision", decision, session_id)
+        return ChatResponse(response=response, session_id=session_id, decision=decision)
     except Exception as e:
         error_msg = str(e)
         if "unsupported_country_region_territory" in error_msg:

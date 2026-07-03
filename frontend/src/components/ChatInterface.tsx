@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import type { Message } from '../types'
 import VoiceInput from './VoiceInput'
+import DecisionCard from './DecisionCard'
 
 interface Props {
   onSessionChange?: (sessionId: string) => void
@@ -61,7 +62,14 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
           onSessionChange?.(data.session_id)
         }
 
-        setMessages([...newMessages, { role: 'assistant', content: data.response }])
+        setMessages([
+          ...newMessages,
+          {
+            role: 'assistant',
+            content: data.response,
+            decision: data.decision ?? undefined,
+          },
+        ])
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
         setMessages([
@@ -94,13 +102,14 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-brand-600 text-white rounded-br-md'
                   : 'bg-white border border-gray-200 text-gray-800 rounded-bl-md shadow-sm'
               }`}
             >
-              {msg.content}
+              <p className="whitespace-pre-wrap">{msg.content}</p>
+              {msg.decision && <DecisionCard decision={msg.decision} />}
             </div>
           </div>
         ))}

@@ -6,6 +6,7 @@ const TYPE_STYLES: Record<string, { bg: string; label: string; icon: string }> =
   reasoning: { bg: 'bg-purple-50 border-purple-200', label: 'Agent Reasoning', icon: '🧠' },
   tool_call: { bg: 'bg-amber-50 border-amber-200', label: 'Tool Call', icon: '🔧' },
   tool_result: { bg: 'bg-green-50 border-green-200', label: 'Tool Result', icon: '✅' },
+  decision: { bg: 'bg-indigo-50 border-indigo-200', label: 'Final Decision', icon: '⚖️' },
 }
 
 function formatData(entry: LogEntry): string {
@@ -19,6 +20,13 @@ function formatData(entry: LogEntry): string {
       return `${data.tool}(${JSON.stringify(data.args)})`
     case 'tool_result':
       return `${data.tool}: ${data.result}`
+    case 'decision': {
+      const status = data.status as string
+      const rules = (data.rules as { label: string; passed: boolean }[]) || []
+      const passed = rules.filter((r) => r.passed).map((r) => r.label).join(', ')
+      const failed = rules.filter((r) => !r.passed).map((r) => r.label).join(', ')
+      return `${status.toUpperCase()} (${data.confidence}% confidence)\nPassed: ${passed || '—'}\nFailed: ${failed || '—'}`
+    }
     default:
       return JSON.stringify(data)
   }

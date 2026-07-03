@@ -1,5 +1,6 @@
+import ast
 import os
-from typing import Annotated, TypedDict
+from typing import Annotated, Optional, TypedDict
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
@@ -9,6 +10,7 @@ from langgraph.prebuilt import ToolNode
 
 from app.agent.tools import ALL_TOOLS
 from app.agent.prompts import SYSTEM_PROMPT
+from app.decision import build_decision
 from app.websocket import log_broadcaster
 
 
@@ -86,7 +88,7 @@ def get_agent():
     return _agent
 
 
-async def run_agent(message: str, history: list[dict], session_id: str) -> str:
+async def run_agent(message: str, history: list[dict], session_id: str) -> tuple[str, Optional[dict]]:
     agent = get_agent()
 
     messages = []
@@ -110,4 +112,55 @@ async def run_agent(message: str, history: list[dict], session_id: str) -> str:
     )
 
     last = result["messages"][-1]
-    return last.content if hasattr(last, "content") else str(last)
+    response = last.content if hasattr(last, "content") else str(last)
+    decision = _extract_decision_from_messages(result["messages"], session_id)
+    return response, decision
+
+
+def _parse_tool_result(content: str) -> dict | None:
+    try:
+        return ast.literal_eval(content)
+    except (ValueError, SyntaxError):
+        return None
+
+
+def _extract_decision_from_messages(messages: list, session_id: str) -> Optional[dict]:
+    eligibility = None
+    action_result = None
+    approved = None
+
+    for msg in messages:
+        if not isinstance(msg, ToolMessage):
+            continue
+        parsed = _parse_tool_result(msg.content)
+        if not isinstance(parsed, dict):
+            continue
+        if "eligible" in parsed and "checks" in parsed:
+            eligibility = parsed
+        elif parsed.get("success") and "refund_reference" in parsed:
+            action_result = parsed
+            approved = True
+        elif parsed.get("success") and "denial_reference" in parsed:
+            action_result = parsed
+            approved = False
+
+    if eligibility is None or approved is None:
+        return None
+
+    if approved:
+        decision = build_decision(
+            eligibility,
+            approved=True,
+            reference=action_result.get("refund_reference") if action_result else None,
+            amount=action_result.get("amount") if action_result else None,
+            item_name=action_result.get("item_name") if action_result else None,
+        )
+    else:
+        decision = build_decision(
+            eligibility,
+            approved=False,
+            reference=action_result.get("denial_reference") if action_result else None,
+            primary_reason=action_result.get("denial_reason") if action_result else None,
+        )
+
+    return decision
