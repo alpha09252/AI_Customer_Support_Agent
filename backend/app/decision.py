@@ -13,6 +13,16 @@ POLICY_RULE_LABELS: dict[str, str] = {
     "category_window": "Rule 2a: Category-specific window applies",
 }
 
+RULE_NUMBERS: dict[str, str] = {
+    "item_exists": "1",
+    "return_window": "2",
+    "final_sale": "3",
+    "digital_product": "4",
+    "order_status": "5",
+    "refund_limit": "8",
+    "category_window": "2a",
+}
+
 
 def _calc_confidence(checks: list[dict], approved: bool) -> int:
     decisive = [c for c in checks if c.get("passed") is not None]
@@ -26,6 +36,38 @@ def _calc_confidence(checks: list[dict], approved: bool) -> int:
         failed = total - passed
         return min(99, 88 + failed * 5)
     return int((passed / total) * 100)
+
+
+def _rule_number_int(rule_id: str) -> Optional[int]:
+    num = RULE_NUMBERS.get(rule_id, "")
+    try:
+        return int(num)
+    except ValueError:
+        return None
+
+
+def _build_reason(approved: bool, rules: list[dict], primary_reason: Optional[str]) -> str:
+    if primary_reason:
+        return primary_reason
+    if approved:
+        for r in rules:
+            if r["rule_id"] == "return_window" and r["passed"]:
+                return "Purchase within return window."
+        return "All policy requirements met."
+    return "Policy requirements not met."
+
+
+def build_decision_json(approved: bool, rules: list[dict], confidence_pct: int, reason: str) -> dict:
+    """Internal decision payload for admin dashboard and API consumers."""
+    matched = sorted(
+        n for r in rules if r["passed"] for n in [_rule_number_int(r["rule_id"])] if n is not None
+    )
+    return {
+        "decision": "approve" if approved else "deny",
+        "confidence": round(confidence_pct / 100, 2),
+        "matched_rules": matched,
+        "reason": reason,
+    }
 
 
 def build_decision(
@@ -54,6 +96,10 @@ def build_decision(
     if not primary_reason and failed:
         primary_reason = failed[0]["detail"]
 
+    confidence = _calc_confidence(checks, approved)
+    reason = _build_reason(approved, rules, primary_reason)
+    decision_json = build_decision_json(approved, rules, confidence, reason)
+
     return {
         "status": "approved" if approved else "denied",
         "reference": reference,
@@ -62,6 +108,7 @@ def build_decision(
         "order_id": eligibility.get("order_id"),
         "item_sku": (eligibility.get("item") or {}).get("sku"),
         "rules": rules,
-        "confidence": _calc_confidence(checks, approved),
+        "confidence": confidence,
         "primary_reason": primary_reason,
+        "decision_json": decision_json,
     }

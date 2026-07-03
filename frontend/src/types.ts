@@ -1,3 +1,34 @@
+export interface ManualReviewItem {
+  ticket: string
+  order_id: string
+  customer_name: string
+  customer_tier: string
+  tags: string[]
+  reason: string
+  confidence: number
+  amount?: number
+  item_name?: string
+  status: string
+  created_at: string
+}
+
+export interface DashboardStats {
+  today_requests: number
+  approved: number
+  denied: number
+  manual_review: number
+}
+
+export interface HistoryRecord {
+  id: string
+  order_id: string
+  decision: string
+  reason: string
+  time: string
+  confidence: number
+  manual_review?: boolean
+}
+
 export interface Message {
   role: 'user' | 'assistant'
   content: string
@@ -11,8 +42,15 @@ export interface PolicyRule {
   detail: string
 }
 
+export interface DecisionJson {
+  decision: 'approve' | 'deny' | 'manual_review'
+  confidence: number
+  matched_rules: number[]
+  reason: string
+}
+
 export interface Decision {
-  status: 'approved' | 'denied'
+  status: 'approved' | 'denied' | 'manual_review'
   reference?: string
   amount?: number
   item_name?: string
@@ -21,12 +59,44 @@ export interface Decision {
   rules: PolicyRule[]
   confidence: number
   primary_reason?: string
+  decision_json?: DecisionJson
+  ticket?: string
+  tags?: string[]
+}
+
+export interface TimelineStep {
+  label: string
+  status: 'pending' | 'success' | 'failed' | 'decision'
+  detail: string
+  decision_status?: string
+  confidence?: number
+  time: string
+}
+
+export interface TimelineSession {
+  session_id: string
+  start_time: string
+  steps: TimelineStep[]
 }
 
 export interface LogEntry {
-  type: 'user_message' | 'reasoning' | 'tool_call' | 'tool_result' | 'decision'
+  type:
+    | 'timeline'
+    | 'timeline_start'
+    | 'policy_rule'
+    | 'policy_rules_complete'
+    | 'user_message'
+    | 'reasoning'
+    | 'tool_call'
+    | 'tool_result'
+    | 'decision'
+    | 'decision_json'
+    | 'history_update'
+    | 'manual_review_queued'
+    | 'dashboard_reset'
   data: Record<string, unknown>
   session_id: string
+  time: string
   timestamp: number
 }
 

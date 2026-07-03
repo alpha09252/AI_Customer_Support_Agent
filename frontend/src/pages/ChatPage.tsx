@@ -8,6 +8,7 @@ const SCENARIOS = [
   { label: 'Final sale item', email: 'mthompson@email.com', order: 'ORD-2024-6612', sku: 'CLTH-2201' },
   { label: 'Digital product', email: 'c.lee@email.com', order: 'ORD-2024-8899', sku: 'DIGI-0025' },
   { label: 'Undelivered order', email: 'amanda.foster@email.com', order: 'ORD-2024-9922', sku: 'CLTH-3305' },
+  { label: 'Manual review (VIP / fraud check)', email: 'lisa.park@email.com', order: 'ORD-2024-8877', sku: 'HOME-4410' },
 ]
 
 export default function ChatPage() {

@@ -1,20 +1,31 @@
+import asyncio
+import json
 import os
 import uuid
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from app.agent.graph import run_agent
 from app.agent.demo import run_demo_agent
+from app.stream import register_emitter, unregister_emitter
 from app.websocket import log_broadcaster
 from app.crm import load_crm
+from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS
+
+from app.history import get_stats, get_history, seed_demo_history, reset_history
+from app.manual_review import get_pending_reviews, seed_pending_reviews, reset_manual_reviews
 
 load_dotenv()
 
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("1", "true", "yes")  # set true if OpenAI unavailable
 
 app = FastAPI(title="ShopEase AI Support Agent", version="1.0.0")
+
+seed_demo_history()
+seed_pending_reviews()
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +59,7 @@ class Decision(BaseModel):
     rules: list[PolicyRule] = []
     confidence: int = 0
     primary_reason: str | None = None
+    decision_json: dict | None = None
 
 
 class ChatResponse(BaseModel):
@@ -63,6 +75,50 @@ async def health():
         "service": "ai-support-agent",
         "demo_mode": DEMO_MODE,
     }
+
+
+@app.get("/api/policy")
+async def get_policy():
+    rules = []
+    for key, label in POLICY_RULE_LABELS.items():
+        num = RULE_NUMBERS.get(key, "?")
+        short = label.split(": ", 1)[-1] if ": " in label else label
+        rules.append({"number": num, "label": short, "rule_id": key})
+    rules.sort(key=lambda r: (len(r["number"]), r["number"]))
+    return {"title": "Refund Policy", "version": "2.1", "rules": rules}
+
+
+@app.get("/api/dashboard/stats")
+async def dashboard_stats():
+    return get_stats()
+
+
+@app.get("/api/dashboard/manual-review")
+async def dashboard_manual_review():
+    return get_pending_reviews()
+
+
+@app.get("/api/dashboard/history")
+async def dashboard_history():
+    return get_history()
+
+
+@app.post("/api/dashboard/reset")
+async def dashboard_reset():
+    """Clear all admin dashboard data (history, stats, manual review queue)."""
+    reset_history()
+    reset_manual_reviews()
+    stats = get_stats()
+    await log_broadcaster.broadcast(
+        "dashboard_reset",
+        {
+            "stats": stats,
+            "history": [],
+            "reviews": [],
+        },
+        "",
+    )
+    return {"ok": True, "stats": stats}
 
 
 @app.get("/api/customers")
@@ -88,8 +144,6 @@ async def chat(req: ChatRequest):
             response, decision = await run_demo_agent(req.message, req.history, session_id)
         else:
             response, decision = await run_agent(req.message, req.history, session_id)
-            if decision:
-                await log_broadcaster.broadcast("decision", decision, session_id)
         return ChatResponse(response=response, session_id=session_id, decision=decision)
     except Exception as e:
         error_msg = str(e)
@@ -101,6 +155,56 @@ async def chat(req: ChatRequest):
         if "OPENAI_API_KEY" in error_msg:
             raise HTTPException(status_code=503, detail="OpenAI API key is missing. Set OPENAI_API_KEY or DEMO_MODE=true in backend/.env.")
         raise HTTPException(status_code=500, detail=f"Agent error: {error_msg}")
+
+
+@app.post("/api/chat/stream")
+async def chat_stream(req: ChatRequest):
+    session_id = req.session_id or str(uuid.uuid4())
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def emitter(text: str) -> None:
+        await queue.put({"type": "step", "text": text})
+
+    async def run_agent_task() -> None:
+        try:
+            register_emitter(session_id, emitter)
+            if DEMO_MODE:
+                response, decision = await run_demo_agent(req.message, req.history, session_id)
+            else:
+                response, decision = await run_agent(req.message, req.history, session_id)
+            await queue.put({
+                "type": "done",
+                "response": response,
+                "decision": decision,
+                "session_id": session_id,
+            })
+        except Exception as e:
+            error_msg = str(e)
+            if "unsupported_country_region_territory" in error_msg:
+                detail = "OpenAI API is not available in your region. Set DEMO_MODE=true in backend/.env."
+            elif "OPENAI_API_KEY" in error_msg:
+                detail = "OpenAI API key is missing."
+            else:
+                detail = f"Agent error: {error_msg}"
+            await queue.put({"type": "error", "detail": detail})
+        finally:
+            unregister_emitter(session_id)
+            await queue.put(None)
+
+    asyncio.create_task(run_agent_task())
+
+    async def event_generator():
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.websocket("/ws/logs")

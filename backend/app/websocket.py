@@ -1,5 +1,4 @@
-import asyncio
-import json
+from datetime import datetime
 from typing import Any
 from fastapi import WebSocket
 
@@ -14,7 +13,7 @@ class LogBroadcaster:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.connections.append(websocket)
-        for entry in self.log_history[-50:]:
+        for entry in self.log_history[-80:]:
             await websocket.send_json(entry)
 
     def disconnect(self, websocket: WebSocket):
@@ -22,15 +21,17 @@ class LogBroadcaster:
             self.connections.remove(websocket)
 
     async def broadcast(self, event_type: str, data: Any, session_id: str = ""):
+        now = datetime.now()
         entry = {
             "type": event_type,
             "data": data,
             "session_id": session_id,
-            "timestamp": asyncio.get_event_loop().time(),
+            "time": now.strftime("%H:%M:%S"),
+            "timestamp": now.timestamp(),
         }
         self.log_history.append(entry)
-        if len(self.log_history) > 200:
-            self.log_history = self.log_history[-200:]
+        if len(self.log_history) > 300:
+            self.log_history = self.log_history[-300:]
 
         dead = []
         for ws in self.connections:

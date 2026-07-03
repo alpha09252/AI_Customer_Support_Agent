@@ -7,6 +7,98 @@ body {
   @apply bg-gray-50 text-gray-900;
 }
 
+/* Admin dashboard */
+.admin-shell {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(16, 185, 129, 0.06), transparent);
+}
+
+/* Admin scrollbars — page + nested panels */
+html:has(.admin-shell) {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #0f172a;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  border-radius: 9999px;
+  border: 2px solid #0f172a;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-corner {
+  background: #0f172a;
+}
+
+.admin-shell .admin-scrollbar,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto) {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 transparent;
+}
+
+.admin-shell .admin-scrollbar::-webkit-scrollbar,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-shell .admin-scrollbar::-webkit-scrollbar-track,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.admin-shell .admin-scrollbar::-webkit-scrollbar-thumb,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.admin-shell .admin-scrollbar::-webkit-scrollbar-thumb:hover,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.admin-shell .admin-scrollbar::-webkit-scrollbar-button,
+.admin-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
+.admin-panel {
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.4);
+}
+
+.admin-tab {
+  transition: all 0.2s ease;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes pulse-ring {
   0% { transform: scale(0.9); opacity: 1; }
   100% { transform: scale(1.3); opacity: 0; }
@@ -28,4 +120,22 @@ body {
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-backdrop {
+  animation: backdropIn 0.2s ease-out;
+}
+
+.modal-content {
+  animation: modalIn 0.25s ease-out;
 }

@@ -10,8 +10,69 @@ from langgraph.prebuilt import ToolNode
 
 from app.agent.tools import ALL_TOOLS
 from app.agent.prompts import SYSTEM_PROMPT
-from app.decision import build_decision
-from app.websocket import log_broadcaster
+from app.decision import build_decision, POLICY_RULE_LABELS
+from app.timeline import timeline, timeline_start, timeline_decision, broadcast_policy_rules
+
+TOOL_PENDING_LABELS: dict[str, str] = {
+    "tool_lookup_customer": "Looking up customer...",
+    "tool_get_order_details": "Looking up order...",
+    "tool_get_refund_history": "Checking refund history...",
+    "tool_get_refund_policy": "Loading refund policy...",
+    "tool_check_refund_eligibility": "Evaluating policy rules...",
+    "tool_process_refund": "Processing refund...",
+    "tool_deny_refund": "Recording denial...",
+}
+
+
+def _describe_tool_result(tool_name: str, parsed: dict) -> list[tuple[str, str, str]]:
+    """Returns list of (label, status, detail) tuples."""
+    steps: list[tuple[str, str, str]] = []
+
+    if tool_name == "tool_lookup_customer":
+        if parsed.get("found"):
+            name = parsed.get("customer", {}).get("name", "Unknown")
+            steps.append(("Customer found", "success", name))
+        else:
+            steps.append(("Customer not found", "failed", parsed.get("message", "")))
+
+    elif tool_name == "tool_get_order_details":
+        if parsed.get("found"):
+            order = parsed.get("order", {})
+            steps.append(("Order found", "success", f"{order.get('order_id', '')} — {order.get('status', '')}"))
+        else:
+            steps.append(("Order not found", "failed", parsed.get("message", "")))
+
+    elif tool_name == "tool_get_refund_history":
+        if parsed.get("limit_reached"):
+            steps.append(("Refund history", "failed", "Annual limit of 3 refunds reached"))
+        elif parsed.get("found"):
+            rem = parsed.get("remaining_refunds", 0)
+            steps.append(("Refund history acceptable", "success", f"{rem} refund(s) remaining"))
+
+    elif tool_name == "tool_get_refund_policy":
+        steps.append(("Refund policy loaded", "success", "ShopEase Policy v2.1"))
+
+    elif tool_name == "tool_check_refund_eligibility":
+        if parsed.get("checks"):
+            for check in parsed["checks"]:
+                if check.get("passed") is None:
+                    continue
+                key = check.get("rule", "")
+                label = POLICY_RULE_LABELS.get(key, key)
+                num = label.split(":")[0].replace("Rule ", "#") if label.startswith("Rule") else key
+                short = label.split(": ", 1)[-1] if ": " in label else label
+                status = "success" if check["passed"] else "failed"
+                steps.append((f"Applying {num}", status, short))
+
+    elif tool_name == "tool_process_refund":
+        if parsed.get("success"):
+            steps.append(("Refund processed", "success", parsed.get("refund_reference", "")))
+
+    elif tool_name == "tool_deny_refund":
+        if parsed.get("success"):
+            steps.append(("Denial recorded", "success", parsed.get("denial_reference", "")))
+
+    return steps
 
 
 class AgentState(TypedDict):
@@ -31,34 +92,29 @@ def create_agent():
     async def call_model(state: AgentState):
         messages = [SystemMessage(content=SYSTEM_PROMPT)] + state["messages"]
         response = await llm_with_tools.ainvoke(messages)
-
-        if response.content:
-            await log_broadcaster.broadcast(
-                "reasoning",
-                {"content": response.content, "role": "agent"},
-                state.get("session_id", ""),
-            )
+        session_id = state.get("session_id", "")
 
         if response.tool_calls:
             for tc in response.tool_calls:
-                await log_broadcaster.broadcast(
-                    "tool_call",
-                    {"tool": tc["name"], "args": tc["args"]},
-                    state.get("session_id", ""),
-                )
+                pending = TOOL_PENDING_LABELS.get(tc["name"], f"Running {tc['name']}...")
+                await timeline(session_id, pending, "pending")
 
         return {"messages": [response]}
 
     async def run_tools(state: AgentState):
         result = await tool_node.ainvoke(state)
+        session_id = state.get("session_id", "")
 
         for msg in result.get("messages", []):
-            if isinstance(msg, ToolMessage):
-                await log_broadcaster.broadcast(
-                    "tool_result",
-                    {"tool": msg.name, "result": msg.content[:500]},
-                    state.get("session_id", ""),
-                )
+            if not isinstance(msg, ToolMessage):
+                continue
+            parsed = _parse_tool_result(msg.content)
+            if not isinstance(parsed, dict):
+                continue
+            if msg.name == "tool_check_refund_eligibility" and parsed.get("checks"):
+                await broadcast_policy_rules(session_id, parsed)
+            for label, status, detail in _describe_tool_result(msg.name or "", parsed):
+                await timeline(session_id, label, status, detail)
 
         return result
 
@@ -100,11 +156,8 @@ async def run_agent(message: str, history: list[dict], session_id: str) -> tuple
 
     messages.append(HumanMessage(content=message))
 
-    await log_broadcaster.broadcast(
-        "user_message",
-        {"content": message},
-        session_id,
-    )
+    await timeline_start(session_id, "Customer requested refund")
+    await timeline(session_id, "Customer requested refund", "success", message[:120])
 
     result = await agent.ainvoke(
         {"messages": messages, "session_id": session_id},
@@ -114,6 +167,13 @@ async def run_agent(message: str, history: list[dict], session_id: str) -> tuple
     last = result["messages"][-1]
     response = last.content if hasattr(last, "content") else str(last)
     decision = _extract_decision_from_messages(result["messages"], session_id)
+    if decision:
+        status = "Approved" if decision["status"] == "approved" else "Denied"
+        detail = decision.get("reference") or decision.get("primary_reason", "")
+        await timeline_decision(
+            session_id, status, decision["confidence"], detail,
+            decision.get("decision_json"), decision,
+        )
     return response, decision
 
 
@@ -148,19 +208,16 @@ def _extract_decision_from_messages(messages: list, session_id: str) -> Optional
         return None
 
     if approved:
-        decision = build_decision(
+        return build_decision(
             eligibility,
             approved=True,
             reference=action_result.get("refund_reference") if action_result else None,
             amount=action_result.get("amount") if action_result else None,
             item_name=action_result.get("item_name") if action_result else None,
         )
-    else:
-        decision = build_decision(
-            eligibility,
-            approved=False,
-            reference=action_result.get("denial_reference") if action_result else None,
-            primary_reason=action_result.get("denial_reason") if action_result else None,
-        )
-
-    return decision
+    return build_decision(
+        eligibility,
+        approved=False,
+        reference=action_result.get("denial_reference") if action_result else None,
+        primary_reason=action_result.get("denial_reason") if action_result else None,
+    )

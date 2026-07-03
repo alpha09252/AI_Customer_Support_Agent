@@ -1,11 +1,64 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import type { Message } from '../types'
+import type { Decision, Message } from '../types'
 import VoiceInput from './VoiceInput'
 import DecisionCard from './DecisionCard'
+import StreamingBubble from './StreamingBubble'
 
 interface Props {
   onSessionChange?: (sessionId: string) => void
   autoMessage?: string
+}
+
+interface StreamDone {
+  type: 'done'
+  response: string
+  session_id: string
+  decision?: Decision
+}
+
+async function consumeChatStream(
+  body: object,
+  onStep: (text: string) => void,
+): Promise<StreamDone> {
+  const res = await fetch('/api/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { detail?: string }).detail || `Request failed (${res.status})`)
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('Streaming not supported')
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      const payload = JSON.parse(line.slice(6))
+      if (payload.type === 'step') {
+        onStep(payload.text)
+      } else if (payload.type === 'error') {
+        throw new Error(payload.detail)
+      } else if (payload.type === 'done') {
+        return payload as StreamDone
+      }
+    }
+  }
+
+  throw new Error('Stream ended unexpectedly')
 }
 
 export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
@@ -18,12 +71,13 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [streamSteps, setStreamSteps] = useState<string[]>([])
   const [sessionId, setSessionId] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, streamSteps])
 
   useEffect(() => {
     if (autoMessage) sendMessage(autoMessage)
@@ -39,29 +93,29 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
       setMessages(newMessages)
       setInput('')
       setLoading(true)
+      setStreamSteps([])
 
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+        const data = await consumeChatStream(
+          {
             message: text.trim(),
             session_id: sessionId,
             history: messages,
-          }),
-        })
+          },
+          (stepText) => {
+            setStreamSteps((prev) => {
+              if (prev.length > 0 && prev[prev.length - 1] === stepText) return prev
+              return [...prev, stepText]
+            })
+          },
+        )
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          throw new Error(err.detail || `Request failed (${res.status})`)
-        }
-
-        const data = await res.json()
         if (data.session_id && data.session_id !== sessionId) {
           setSessionId(data.session_id)
           onSessionChange?.(data.session_id)
         }
 
+        setStreamSteps([])
         setMessages([
           ...newMessages,
           {
@@ -72,6 +126,7 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
         ])
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown error'
+        setStreamSteps([])
         setMessages([
           ...newMessages,
           {
@@ -113,14 +168,11 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
             </div>
           </div>
         ))}
-        {loading && (
+        {loading && streamSteps.length > 0 && <StreamingBubble steps={streamSteps} />}
+        {loading && streamSteps.length === 0 && (
           <div className="flex justify-start">
             <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-              <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
+              <p className="text-sm text-gray-500 font-mono">Connecting...</p>
             </div>
           </div>
         )}
