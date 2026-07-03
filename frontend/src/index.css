@@ -7,6 +7,82 @@ body {
   @apply bg-gray-50 text-gray-900;
 }
 
+/* Customer chat page */
+.chat-shell {
+  background-image:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(99, 102, 241, 0.06), transparent),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgba(99, 102, 241, 0.04), transparent);
+}
+
+/* Chat scrollbars — page + nested panels */
+html:has(.chat-shell) {
+  scrollbar-width: thin;
+  scrollbar-color: #c7d2fe #f3f4f6;
+}
+
+html:has(.chat-shell)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+html:has(.chat-shell)::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+html:has(.chat-shell)::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #c7d2fe 0%, #a5b4fc 100%);
+  border-radius: 9999px;
+  border: 2px solid #f3f4f6;
+}
+
+html:has(.chat-shell)::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #a5b4fc 0%, #6366f1 100%);
+}
+
+html:has(.chat-shell)::-webkit-scrollbar-corner {
+  background: #f3f4f6;
+}
+
+.chat-shell .chat-scrollbar,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto) {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.chat-shell .chat-scrollbar::-webkit-scrollbar,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.chat-shell .chat-scrollbar::-webkit-scrollbar-track,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+
+.chat-shell .chat-scrollbar::-webkit-scrollbar-thumb,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-thumb {
+  background: #e5e7eb;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.chat-shell .chat-scrollbar::-webkit-scrollbar-thumb:hover,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-thumb:hover {
+  background: #c7d2fe;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.chat-shell .chat-scrollbar::-webkit-scrollbar-button,
+.chat-shell :is(.overflow-y-auto, .overflow-auto, .overflow-x-auto)::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+}
+
 /* Admin dashboard */
 .admin-shell {
   background-image:
