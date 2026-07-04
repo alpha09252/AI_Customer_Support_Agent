@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { LogEntry, ManualReviewItem } from '../types'
 import ConfirmDialog from './ConfirmDialog'
 
 interface Props {
   variant?: 'light' | 'admin'
   expanded?: boolean
+}
+
+function ticketPath(ticket: string) {
+  return `/admin/reviews/${encodeURIComponent(ticket.replace('#', ''))}`
 }
 
 function Tag({ label }: { label: string }) {
@@ -22,6 +27,7 @@ function Tag({ label }: { label: string }) {
 }
 
 export default function ManualReviewQueue({ variant = 'light', expanded = false }: Props) {
+  const navigate = useNavigate()
   const [reviews, setReviews] = useState<ManualReviewItem[]>([])
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState<string | null>(null)
@@ -158,16 +164,27 @@ export default function ManualReviewQueue({ variant = 'light', expanded = false 
             {reviews.map((item) => (
               <div
                 key={item.ticket}
-                className="group rounded-xl border border-slate-700/50 bg-slate-800/30 p-5 hover:border-slate-600/60 transition-all"
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(ticketPath(item.ticket))}
+                onKeyDown={(e) => e.key === 'Enter' && navigate(ticketPath(item.ticket))}
+                className="group rounded-xl border border-slate-700/50 bg-slate-800/30 p-5 hover:border-brand-500/40 hover:bg-slate-800/50 transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <span className="font-mono text-lg font-bold text-white">{item.ticket}</span>
+                    <span className="font-mono text-lg font-bold text-white group-hover:text-brand-300 transition-colors">
+                      {item.ticket}
+                    </span>
                     <p className="text-xs text-slate-500 mt-0.5 font-mono">{item.order_id}</p>
                   </div>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-800/60 px-2 py-1 rounded-lg">
-                    {item.created_at}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-slate-500 bg-slate-800/60 px-2 py-1 rounded-lg">
+                      {item.created_at}
+                    </span>
+                    <svg className="w-4 h-4 text-slate-600 group-hover:text-brand-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 mb-3">
@@ -197,7 +214,11 @@ export default function ManualReviewQueue({ variant = 'light', expanded = false 
                   </div>
                 )}
 
-                <div className="mt-4 pt-4 border-t border-slate-700/40 flex gap-2">
+                <div
+                  className="mt-4 pt-4 border-t border-slate-700/40 flex gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <button
                     type="button"
                     onClick={() => openResolveDialog(item, 'approve')}

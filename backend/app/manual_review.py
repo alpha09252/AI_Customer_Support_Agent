@@ -148,6 +148,79 @@ def get_pending_reviews() -> list[dict]:
     return [q for q in _queue if q.get("status") == "pending"]
 
 
+def _normalize_ticket(ticket: str) -> str:
+    ticket = ticket.strip()
+    return ticket if ticket.startswith("#") else f"#{ticket}"
+
+
+def get_review_detail(ticket: str) -> Optional[dict]:
+    """Full detail for a manual review case, including CRM context."""
+    from app.crm import get_order_details, check_refund_eligibility, get_customer_refund_history
+    from app.decision import POLICY_RULE_LABELS
+
+    normalized = _normalize_ticket(ticket)
+    entry = _find_pending(normalized)
+    if not entry:
+        return None
+
+    order_info = None
+    customer_info = None
+    eligibility_summary = None
+    rules = entry.get("rules") or []
+
+    order_id = entry.get("order_id")
+    item_sku = entry.get("item_sku")
+
+    if order_id and order_id != "—":
+        order_result = get_order_details(order_id)
+        if order_result.get("found"):
+            order = order_result["order"]
+            order_info = {
+                "order_id": order_id,
+                "status": order.get("status"),
+                "date": order.get("date"),
+                "delivery_date": order.get("delivery_date"),
+                "total": order.get("total"),
+                "items": order.get("items", []),
+            }
+            customer_id = order_result.get("customer_id")
+            customer_info = {
+                "customer_id": customer_id,
+                "name": order_result.get("customer_name") or entry.get("customer_name"),
+                "tier": order_result.get("customer_tier") or entry.get("customer_tier"),
+            }
+            if customer_id:
+                history = get_customer_refund_history(customer_id)
+                customer_info["refunds_this_year"] = history.get("refunds_this_year", 0)
+                customer_info["remaining_refunds"] = history.get("remaining_refunds", 0)
+
+        if item_sku:
+            eligibility = check_refund_eligibility(order_id, item_sku, "Manual review")
+            eligibility_summary = {
+                "eligible": eligibility.get("eligible", False),
+                "order_id": order_id,
+            }
+            if not rules:
+                rules = []
+                for check in eligibility.get("checks", []):
+                    if check.get("passed") is None:
+                        continue
+                    key = check.get("rule", "")
+                    rules.append({
+                        "rule_id": key,
+                        "label": POLICY_RULE_LABELS.get(key, key),
+                        "passed": bool(check["passed"]),
+                        "detail": check.get("detail", ""),
+                    })
+
+    return {
+        "review": {**entry, "rules": rules},
+        "order": order_info,
+        "customer": customer_info,
+        "eligibility": eligibility_summary,
+    }
+
+
 def reset_manual_reviews() -> None:
     """Clear the manual review queue and reset ticket numbering."""
     global _ticket_counter
@@ -168,6 +241,8 @@ def enqueue_review(session_id: str, decision: dict) -> dict:
         "confidence": decision.get("confidence", 0),
         "amount": decision.get("amount"),
         "item_name": decision.get("item_name"),
+        "rules": decision.get("rules") or [],
+        "decision_json": decision.get("decision_json"),
         "status": "pending",
         "created_at": datetime.now().strftime("%H:%M:%S"),
     }
@@ -190,7 +265,7 @@ async def resolve_review(ticket: str, action: str, notes: str = "") -> dict:
     if action not in ("approve", "deny"):
         raise ValueError("Action must be 'approve' or 'deny'")
 
-    entry = _find_pending(ticket)
+    entry = _find_pending(_normalize_ticket(ticket))
     if not entry:
         raise ValueError(f"Pending review {ticket} not found")
 

@@ -1,5 +1,6 @@
 export interface ManualReviewItem {
   ticket: string
+  session_id?: string
   order_id: string
   customer_name: string
   customer_tier: string
@@ -8,8 +9,34 @@ export interface ManualReviewItem {
   confidence: number
   amount?: number
   item_name?: string
+  item_sku?: string
   status: string
   created_at: string
+  rules?: PolicyRule[]
+  decision_json?: DecisionJson & { ticket?: string; tags?: string[] }
+}
+
+export interface ManualReviewDetailResponse {
+  review: ManualReviewItem
+  order?: {
+    order_id: string
+    status: string
+    date: string
+    delivery_date?: string
+    total: number
+    items: { sku: string; name: string; price: number; category: string }[]
+  }
+  customer?: {
+    customer_id: string
+    name: string
+    tier: string
+    refunds_this_year?: number
+    remaining_refunds?: number
+  }
+  eligibility?: {
+    eligible: boolean
+    order_id: string
+  }
 }
 
 export interface DashboardStats {

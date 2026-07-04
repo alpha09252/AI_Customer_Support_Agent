@@ -16,7 +16,7 @@ from app.crm import load_crm
 from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS
 
 from app.history import get_stats, get_history, get_record, get_order_history, reset_history
-from app.manual_review import get_pending_reviews, reset_manual_reviews, resolve_review
+from app.manual_review import get_pending_reviews, get_review_detail, reset_manual_reviews, resolve_review
 
 load_dotenv()
 
@@ -98,6 +98,14 @@ async def dashboard_stats():
 @app.get("/api/dashboard/manual-review")
 async def dashboard_manual_review():
     return get_pending_reviews()
+
+
+@app.get("/api/dashboard/manual-review/{ticket}")
+async def dashboard_manual_review_detail(ticket: str):
+    detail = get_review_detail(ticket)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return detail
 
 
 @app.post("/api/dashboard/manual-review/{ticket}/resolve")
