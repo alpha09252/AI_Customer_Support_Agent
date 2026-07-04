@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import AgentLogPanel from '../components/AgentLogPanel'
 import PolicyRuleViewer from '../components/PolicyRuleViewer'
 import DecisionJsonPanel from '../components/DecisionJsonPanel'
@@ -72,10 +73,16 @@ function PanelHeader({ title, subtitle }: { title: string; subtitle?: string }) 
 }
 
 export default function AdminPage() {
+  const location = useLocation()
   const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [resetting, setResetting] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const tab = (location.state as { tab?: AdminTab } | null)?.tab
+    if (tab) setActiveTab(tab)
+  }, [location.state])
 
   const confirmReset = async () => {
     setResetting(true)

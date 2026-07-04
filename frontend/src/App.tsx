@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import ChatPage from './pages/ChatPage'
 import AdminPage from './pages/AdminPage'
+import RequestDetailPage from './pages/RequestDetailPage'
 
 export default function App() {
   const location = useLocation()
@@ -67,6 +68,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<ChatPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/requests/:id" element={<RequestDetailPage />} />
         </Routes>
       </main>
     </div>

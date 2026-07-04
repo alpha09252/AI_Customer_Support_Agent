@@ -21,12 +21,41 @@ export interface DashboardStats {
 
 export interface HistoryRecord {
   id: string
+  session_id?: string
   order_id: string
   decision: string
+  status?: string
   reason: string
   time: string
+  date?: string
   confidence: number
   manual_review?: boolean
+  ticket?: string
+  item_name?: string
+  item_sku?: string
+  amount?: number
+  reference?: string
+  tags?: string[]
+  rules?: PolicyRule[]
+  decision_json?: DecisionJson & { ticket?: string; tags?: string[]; resolved_by?: string }
+}
+
+export interface HistoryDetailResponse {
+  record: HistoryRecord
+  related: HistoryRecord[]
+  order?: {
+    order_id: string
+    status: string
+    date: string
+    delivery_date?: string
+    total: number
+    items: { sku: string; name: string; price: number; category: string }[]
+  }
+  customer?: {
+    customer_id: string
+    name: string
+    tier: string
+  }
 }
 
 export interface Message {

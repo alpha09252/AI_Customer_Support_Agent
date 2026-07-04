@@ -40,12 +40,20 @@ def record_request(session_id: str, decision: dict) -> dict:
         "session_id": session_id,
         "order_id": decision.get("order_id") or "—",
         "decision": decision_label,
+        "status": status,
         "reason": djson.get("reason") or decision.get("primary_reason") or "—",
         "time": now.strftime("%H:%M:%S"),
         "date": _today(),
         "confidence": decision.get("confidence", 0),
         "manual_review": status == "manual_review" or _classify_manual(decision),
         "ticket": decision.get("ticket"),
+        "item_name": decision.get("item_name"),
+        "item_sku": decision.get("item_sku"),
+        "amount": decision.get("amount"),
+        "reference": decision.get("reference"),
+        "tags": decision.get("tags") or [],
+        "rules": decision.get("rules") or [],
+        "decision_json": djson or None,
     }
     _records.insert(0, record)
     if len(_records) > 100:
@@ -70,6 +78,19 @@ def get_stats() -> dict:
 
 def get_history(limit: int = 50) -> list[dict]:
     return _records[:limit]
+
+
+def get_record(record_id: str) -> Optional[dict]:
+    for record in _records:
+        if record.get("id") == record_id:
+            return record
+    return None
+
+
+def get_order_history(order_id: str, limit: int = 20) -> list[dict]:
+    if not order_id or order_id == "—":
+        return []
+    return [r for r in _records if r.get("order_id") == order_id][:limit]
 
 
 def reset_history() -> None:

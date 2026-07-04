@@ -15,17 +15,14 @@ from app.websocket import log_broadcaster
 from app.crm import load_crm
 from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS
 
-from app.history import get_stats, get_history, seed_demo_history, reset_history
-from app.manual_review import get_pending_reviews, seed_pending_reviews, reset_manual_reviews, resolve_review
+from app.history import get_stats, get_history, get_record, get_order_history, reset_history
+from app.manual_review import get_pending_reviews, reset_manual_reviews, resolve_review
 
 load_dotenv()
 
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("1", "true", "yes")  # set true if OpenAI unavailable
 
 app = FastAPI(title="ShopEase AI Support Agent", version="1.0.0")
-
-seed_demo_history()
-seed_pending_reviews()
 
 app.add_middleware(
     CORSMiddleware,
@@ -117,6 +114,44 @@ async def resolve_manual_review(ticket: str, req: ResolveReviewRequest):
 @app.get("/api/dashboard/history")
 async def dashboard_history():
     return get_history()
+
+
+@app.get("/api/dashboard/history/{record_id}")
+async def dashboard_history_detail(record_id: str):
+    record = get_record(record_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    order_id = record.get("order_id", "")
+    related = get_order_history(order_id)
+    order_info = None
+    customer_info = None
+
+    if order_id and order_id != "—":
+        from app.crm import get_order_details
+        order_result = get_order_details(order_id)
+        if order_result.get("found"):
+            order = order_result["order"]
+            order_info = {
+                "order_id": order_id,
+                "status": order.get("status"),
+                "date": order.get("date"),
+                "delivery_date": order.get("delivery_date"),
+                "total": order.get("total"),
+                "items": order.get("items", []),
+            }
+            customer_info = {
+                "customer_id": order_result.get("customer_id"),
+                "name": order_result.get("customer_name"),
+                "tier": order_result.get("customer_tier"),
+            }
+
+    return {
+        "record": record,
+        "related": related,
+        "order": order_info,
+        "customer": customer_info,
+    }
 
 
 @app.post("/api/dashboard/reset")
