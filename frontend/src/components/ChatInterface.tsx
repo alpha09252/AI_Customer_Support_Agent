@@ -71,9 +71,11 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const [streamSteps, setStreamSteps] = useState<string[]>([])
   const [sessionId, setSessionId] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -148,7 +150,7 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
 
   const handleVoiceTranscript = (text: string) => {
     setInput(text)
-    sendMessage(text)
+    inputRef.current?.focus()
   }
 
   return (
@@ -180,15 +182,38 @@ export default function ChatInterface({ onSessionChange, autoMessage }: Props) {
       </div>
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white p-4">
+        {isRecording && (
+          <div
+            className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200"
+            role="status"
+            aria-live="polite"
+          >
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+            </span>
+            <p className="text-sm font-medium text-red-700">Recording in progress — speak now</p>
+            <p className="text-xs text-red-500 ml-auto hidden sm:block">Click mic to stop</p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <VoiceInput onTranscript={handleVoiceTranscript} disabled={loading} />
+          <VoiceInput
+            onTranscript={handleVoiceTranscript}
+            onListeningChange={setIsRecording}
+            disabled={loading}
+          />
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            placeholder={isRecording ? 'Listening…' : 'Type your message...'}
             disabled={loading}
-            className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50"
+            className={`flex-1 rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 transition-colors ${
+              isRecording
+                ? 'border-red-300 bg-red-50/50 focus:ring-red-400 placeholder:text-red-400'
+                : 'border-gray-300 focus:ring-brand-500'
+            }`}
           />
           <button
             type="submit"
