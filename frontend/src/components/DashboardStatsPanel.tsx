@@ -77,6 +77,9 @@ export default function DashboardStatsPanel({ variant = 'light' }: Props) {
       if (entry.type === 'dashboard_reset' && entry.data.stats) {
         setStats(entry.data.stats as DashboardStats)
       }
+      if (entry.type === 'manual_review_resolved' && entry.data.stats) {
+        setStats(entry.data.stats as DashboardStats)
+      }
       if (entry.type === 'history_update' && entry.data.stats) {
         setStats(entry.data.stats as DashboardStats)
       }

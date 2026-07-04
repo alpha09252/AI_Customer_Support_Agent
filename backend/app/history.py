@@ -54,13 +54,12 @@ def record_request(session_id: str, decision: dict) -> dict:
 
 
 def get_stats() -> dict:
+    from app.manual_review import get_pending_reviews
+
     today_records = [r for r in _records if r.get("date") == _today()]
     approved = sum(1 for r in today_records if r["decision"] == "Approved")
     denied = sum(1 for r in today_records if r["decision"] == "Denied")
-    manual = sum(
-        1 for r in today_records
-        if r["decision"] == "Manual Review" or r.get("manual_review")
-    )
+    manual = len(get_pending_reviews())
     return {
         "today_requests": len(today_records),
         "approved": approved,

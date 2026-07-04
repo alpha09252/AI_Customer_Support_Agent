@@ -16,7 +16,7 @@ from app.crm import load_crm
 from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS
 
 from app.history import get_stats, get_history, seed_demo_history, reset_history
-from app.manual_review import get_pending_reviews, seed_pending_reviews, reset_manual_reviews
+from app.manual_review import get_pending_reviews, seed_pending_reviews, reset_manual_reviews, resolve_review
 
 load_dotenv()
 
@@ -40,6 +40,11 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str = ""
     history: list[dict] = []
+
+
+class ResolveReviewRequest(BaseModel):
+    action: str  # approve | deny
+    notes: str = ""
 
 
 class PolicyRule(BaseModel):
@@ -96,6 +101,17 @@ async def dashboard_stats():
 @app.get("/api/dashboard/manual-review")
 async def dashboard_manual_review():
     return get_pending_reviews()
+
+
+@app.post("/api/dashboard/manual-review/{ticket}/resolve")
+async def resolve_manual_review(ticket: str, req: ResolveReviewRequest):
+    try:
+        result = await resolve_review(ticket, req.action, req.notes)
+        return {"ok": True, **result}
+    except ValueError as e:
+        raise HTTPException(status_code=404 if "not found" in str(e).lower() else 400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to resolve review: {e}")
 
 
 @app.get("/api/dashboard/history")

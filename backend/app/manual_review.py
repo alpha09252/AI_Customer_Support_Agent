@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS, _calc_confidence
+from app.decision import POLICY_RULE_LABELS, RULE_NUMBERS, _calc_confidence, build_decision_json
 from app.websocket import log_broadcaster
 
 _queue: list[dict] = []
@@ -160,6 +160,7 @@ def enqueue_review(session_id: str, decision: dict) -> dict:
         "ticket": decision.get("ticket", _next_ticket()),
         "session_id": session_id,
         "order_id": decision.get("order_id", "—"),
+        "item_sku": decision.get("item_sku"),
         "customer_name": decision.get("customer_name", "Unknown"),
         "customer_tier": decision.get("customer_tier", "standard"),
         "tags": decision.get("tags", []),
@@ -172,6 +173,101 @@ def enqueue_review(session_id: str, decision: dict) -> dict:
     }
     _queue.insert(0, entry)
     return entry
+
+
+def _find_pending(ticket: str) -> Optional[dict]:
+    for entry in _queue:
+        if entry.get("ticket") == ticket and entry.get("status") == "pending":
+            return entry
+    return None
+
+
+async def resolve_review(ticket: str, action: str, notes: str = "") -> dict:
+    """Admin approves or denies a pending manual review case."""
+    from app.crm import process_refund, deny_refund, check_refund_eligibility
+    from app.history import record_and_broadcast
+
+    if action not in ("approve", "deny"):
+        raise ValueError("Action must be 'approve' or 'deny'")
+
+    entry = _find_pending(ticket)
+    if not entry:
+        raise ValueError(f"Pending review {ticket} not found")
+
+    order_id = entry.get("order_id", "")
+    item_sku = entry.get("item_sku")
+    reason = notes or "Admin manual review decision"
+    approved = action == "approve"
+
+    if approved and item_sku and order_id and order_id != "—":
+        result = process_refund(order_id, item_sku, reason)
+        if not result.get("success"):
+            raise ValueError(result.get("message", "Refund could not be processed"))
+        reference = result["refund_reference"]
+        amount = result.get("amount", entry.get("amount"))
+        item_name = result.get("item_name", entry.get("item_name"))
+        primary_reason = notes or f"Approved by admin — {ticket}"
+    elif approved:
+        reference = f"REF-MR-{ticket.replace('#', '')}"
+        amount = entry.get("amount")
+        item_name = entry.get("item_name")
+        primary_reason = notes or f"Approved by admin — {ticket}"
+    else:
+        if item_sku and order_id and order_id != "—":
+            eligibility = check_refund_eligibility(order_id, item_sku, reason)
+            failed = [c for c in eligibility.get("checks", []) if c.get("passed") is False]
+            denial_reason = failed[0]["detail"] if failed else entry.get("reason", "Denied by admin")
+            result = deny_refund(order_id, item_sku, reason, denial_reason)
+            reference = result["denial_reference"]
+        else:
+            reference = f"DEN-MR-{ticket.replace('#', '')}"
+        amount = entry.get("amount")
+        item_name = entry.get("item_name")
+        primary_reason = notes or entry.get("reason") or f"Denied by admin — {ticket}"
+
+    confidence = entry.get("confidence", 85)
+    decision_json = build_decision_json(approved, [], confidence, primary_reason)
+    decision_json["ticket"] = ticket
+    decision_json["resolved_by"] = "admin"
+
+    decision = {
+        "status": "approved" if approved else "denied",
+        "reference": reference,
+        "amount": amount,
+        "item_name": item_name,
+        "order_id": order_id,
+        "item_sku": item_sku,
+        "rules": [],
+        "confidence": confidence,
+        "primary_reason": primary_reason,
+        "decision_json": decision_json,
+        "ticket": ticket,
+    }
+
+    entry["status"] = "approved" if approved else "denied"
+    entry["resolved_at"] = datetime.now().strftime("%H:%M:%S")
+    entry["admin_notes"] = notes
+    entry["resolution_reference"] = reference
+
+    session_id = entry.get("session_id", "admin")
+    await record_and_broadcast(session_id, decision)
+
+    from app.history import get_stats
+
+    await log_broadcaster.broadcast(
+        "manual_review_resolved",
+        {
+            "ticket": ticket,
+            "action": action,
+            "review": entry,
+            "decision": decision,
+            "pending_count": len(get_pending_reviews()),
+            "stats": get_stats(),
+        },
+        session_id,
+    )
+
+    return {"review": entry, "decision": decision}
 
 
 async def enqueue_and_broadcast(session_id: str, decision: dict) -> dict:

@@ -93,6 +93,7 @@ export interface LogEntry {
     | 'decision_json'
     | 'history_update'
     | 'manual_review_queued'
+    | 'manual_review_resolved'
     | 'dashboard_reset'
   data: Record<string, unknown>
   session_id: string

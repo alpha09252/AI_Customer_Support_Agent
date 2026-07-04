@@ -224,7 +224,7 @@ export default function AdminPage() {
 
             {activeTab === 'reviews' && (
               <div className="h-full">
-                <PanelHeader title="Manual Review Queue" subtitle="Escalated cases requiring specialist attention" />
+                <PanelHeader title="Manual Review Queue" subtitle="Review flagged cases — approve or deny each refund" />
                 <div className="p-6">
                   <ManualReviewQueue variant="admin" expanded />
                 </div>
